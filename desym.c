@@ -5,7 +5,7 @@
 
 #include <stdio.h>      // printf
 #include <stdlib.h>
-#include <string.h>     // strncat, strdup, strncpy, strcmp
+#include <string.h>     // strncat, strdup, strncpy, strcmp, strstr
 #include <errno.h>      // errno
 
 #include <unistd.h>     // readlink
@@ -41,6 +41,7 @@ int main(int argc, char** argv)
 
     int dir_fd = AT_FDCWD;
     char* dir = NULL;
+    char* dir_buf = NULL;
 
     while (1)
     {
@@ -52,25 +53,22 @@ int main(int argc, char** argv)
         printf("%s\n", current);
 
         int new_dir = dir_fd;
-        if (current[0] == '/')
+        char* slash = strstr(current, "/");
+
+        if (slash != NULL)
         {
-            free(dir);
-            dir = strdup(current);
-            dir = dirname(dir);
+            free(dir_buf);
+            dir_buf = strdup(current);
+            if (!dir_buf)
+                perror("alloc"), exit(2);
+            dir = dirname(dir_buf);
             new_dir = open(dir, O_PATH | O_NOFOLLOW);
-        }
-        else
-        {
-            // TODO: add realpath usage
-            // free(dir);
-            // dir = realpath(current, NULL);
-            // new_dir = open(dir, O_PATH | O_NOFOLLOW);
         }
 
         ssize_t r;
         if ((r = readlinkat(dir_fd, current, buffer, buflen)) == -1)
         {
-            free(dir);
+            free(dir_buf);
             if (errno != EINVAL)
             {
                 perror("error");
